@@ -1,9 +1,12 @@
+-- AuroraUI – Enhanced with more elements and layout options
 local AuroraUI = {}
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
+-- Theme (easily customizable)
 local theme = {
     Primary = Color3.fromRGB(70, 130, 200),
     Secondary = Color3.fromRGB(100, 100, 100),
@@ -12,6 +15,8 @@ local theme = {
     GradientTop = Color3.fromRGB(30, 30, 45),
     GradientBottom = Color3.fromRGB(20, 20, 30),
     Transparency = 0.85,
+    ElementBg = Color3.fromRGB(40, 40, 50),
+    ElementBgTrans = 0.3,
 }
 
 local function tween(obj, props, duration, style)
@@ -20,13 +25,27 @@ local function tween(obj, props, duration, style)
     return t
 end
 
+-- Helper to create a column container
+local function createColumn(parent, width)
+    local col = Instance.new("Frame")
+    col.Size = UDim2.new(width or 0.48, 0, 1, 0)
+    col.BackgroundTransparency = 1
+    col.Parent = parent
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = col
+    
+    return col
+end
+
 function AuroraUI:CreateWindow(title, size)
     local gui = Instance.new("ScreenGui")
     gui.Name = "AuroraUI"
     gui.Parent = CoreGui
 
     local frame = Instance.new("Frame")
-    frame.Size = size or UDim2.new(0, 500, 0, 400)
+    frame.Size = size or UDim2.new(0, 600, 0, 500)
     frame.Position = UDim2.new(0.5, -frame.Size.X.Offset/2, 0.5, -frame.Size.Y.Offset/2)
     frame.BackgroundColor3 = theme.Background
     frame.BackgroundTransparency = theme.Transparency
@@ -91,6 +110,7 @@ function AuroraUI:CreateWindow(title, size)
         end
     end)
 
+    -- Tab container
     local tabContainer = Instance.new("Frame")
     tabContainer.Size = UDim2.new(1, 0, 0, 35)
     tabContainer.Position = UDim2.new(0, 0, 0, 30)
@@ -102,6 +122,7 @@ function AuroraUI:CreateWindow(title, size)
     tabLayout.Padding = UDim.new(0, 5)
     tabLayout.Parent = tabContainer
 
+    -- Content area
     local contentFrame = Instance.new("Frame")
     contentFrame.Size = UDim2.new(1, -20, 1, -75)
     contentFrame.Position = UDim2.new(0, 10, 0, 65)
@@ -114,6 +135,18 @@ function AuroraUI:CreateWindow(title, size)
     window.tabs = {}
     window.currentTab = nil
 
+    -- Helper to create a standard element frame
+    local function createElementFrame(parent, height)
+        local elem = Instance.new("Frame")
+        elem.Size = UDim2.new(1, 0, 0, height)
+        elem.BackgroundColor3 = theme.ElementBg
+        elem.BackgroundTransparency = theme.ElementBgTrans
+        elem.BorderSizePixel = 0
+        elem.Parent = parent
+        return elem
+    end
+
+    -- Tab creation
     function window:AddTab(name)
         local btn = Instance.new("TextButton")
         btn.Size = UDim2.new(0, 100, 1, 0)
@@ -131,10 +164,6 @@ function AuroraUI:CreateWindow(title, size)
         tabContent.Visible = false
         tabContent.Parent = contentFrame
 
-        local list = Instance.new("UIListLayout")
-        list.Padding = UDim.new(0, 8)
-        list.Parent = tabContent
-
         btn.MouseButton1Click:Connect(function()
             if window.currentTab then window.currentTab.Visible = false end
             tabContent.Visible = true
@@ -151,15 +180,27 @@ function AuroraUI:CreateWindow(title, size)
 
         local tab = {}
         tab.content = tabContent
+        tab.elements = {} -- store elements for potential cleanup
 
+        -- Add a label element
+        function tab:AddLabel(config)
+            local elem = createElementFrame(tabContent, 30)
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -10, 1, 0)
+            label.Position = UDim2.new(0, 5, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.text or ""
+            label.TextColor3 = config.color or theme.Text
+            label.TextXAlignment = config.align or Enum.TextXAlignment.Left
+            label.TextSize = config.size or 14
+            label.Font = config.font or Enum.Font.Gotham
+            label.Parent = elem
+            return elem
+        end
+
+        -- Add a button
         function tab:AddButton(config)
-            local btnFrame = Instance.new("Frame")
-            btnFrame.Size = UDim2.new(1, 0, 0, 35)
-            btnFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-            btnFrame.BackgroundTransparency = 0.3
-            btnFrame.BorderSizePixel = 0
-            btnFrame.Parent = tabContent
-
+            local elem = createElementFrame(tabContent, 35)
             local button = Instance.new("TextButton")
             button.Size = UDim2.new(1, 0, 1, 0)
             button.BackgroundTransparency = 1
@@ -167,24 +208,20 @@ function AuroraUI:CreateWindow(title, size)
             button.TextColor3 = theme.Text
             button.TextSize = 14
             button.Font = Enum.Font.Gotham
-            button.Parent = btnFrame
+            button.Parent = elem
 
             button.MouseButton1Click:Connect(function()
                 if config.callback then config.callback() end
-                tween(btnFrame, {BackgroundTransparency = 0.6}, 0.1)
+                tween(elem, {BackgroundTransparency = 0.6}, 0.1)
                 task.wait(0.1)
-                tween(btnFrame, {BackgroundTransparency = 0.3}, 0.2)
+                tween(elem, {BackgroundTransparency = theme.ElementBgTrans}, 0.2)
             end)
+            return elem
         end
 
+        -- Add a slider
         function tab:AddSlider(config)
-            local sliderFrame = Instance.new("Frame")
-            sliderFrame.Size = UDim2.new(1, 0, 0, 45)
-            sliderFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-            sliderFrame.BackgroundTransparency = 0.3
-            sliderFrame.BorderSizePixel = 0
-            sliderFrame.Parent = tabContent
-
+            local elem = createElementFrame(tabContent, 45)
             local label = Instance.new("TextLabel")
             label.Size = UDim2.new(1, -10, 0, 20)
             label.Position = UDim2.new(0, 5, 0, 5)
@@ -194,14 +231,14 @@ function AuroraUI:CreateWindow(title, size)
             label.TextXAlignment = Enum.TextXAlignment.Left
             label.TextSize = 12
             label.Font = Enum.Font.Gotham
-            label.Parent = sliderFrame
+            label.Parent = elem
 
             local sliderBack = Instance.new("Frame")
             sliderBack.Size = UDim2.new(1, -20, 0, 5)
             sliderBack.Position = UDim2.new(0, 10, 0, 30)
             sliderBack.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
             sliderBack.BorderSizePixel = 0
-            sliderBack.Parent = sliderFrame
+            sliderBack.Parent = elem
 
             local fill = Instance.new("Frame")
             fill.Size = UDim2.new(0, 0, 1, 0)
@@ -246,16 +283,12 @@ function AuroraUI:CreateWindow(title, size)
                     update(value)
                 end
             end)
+            return elem
         end
 
+        -- Add a toggle
         function tab:AddToggle(config)
-            local toggleFrame = Instance.new("Frame")
-            toggleFrame.Size = UDim2.new(1, 0, 0, 35)
-            toggleFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-            toggleFrame.BackgroundTransparency = 0.3
-            toggleFrame.BorderSizePixel = 0
-            toggleFrame.Parent = tabContent
-
+            local elem = createElementFrame(tabContent, 35)
             local label = Instance.new("TextLabel")
             label.Size = UDim2.new(1, -40, 1, 0)
             label.Position = UDim2.new(0, 5, 0, 0)
@@ -265,14 +298,14 @@ function AuroraUI:CreateWindow(title, size)
             label.TextXAlignment = Enum.TextXAlignment.Left
             label.TextSize = 14
             label.Font = Enum.Font.Gotham
-            label.Parent = toggleFrame
+            label.Parent = elem
 
             local toggleBtn = Instance.new("Frame")
             toggleBtn.Size = UDim2.new(0, 40, 0, 20)
             toggleBtn.Position = UDim2.new(1, -45, 0, 7.5)
             toggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
             toggleBtn.BorderSizePixel = 0
-            toggleBtn.Parent = toggleFrame
+            toggleBtn.Parent = elem
 
             local knob = Instance.new("Frame")
             knob.Size = UDim2.new(0, 16, 0, 16)
@@ -299,18 +332,194 @@ function AuroraUI:CreateWindow(title, size)
             clickable.Size = UDim2.new(1, 0, 1, 0)
             clickable.BackgroundTransparency = 1
             clickable.Text = ""
-            clickable.Parent = toggleFrame
+            clickable.Parent = elem
             clickable.MouseButton1Click:Connect(function()
                 state = not state
                 update()
                 tween(knob, {Position = state and UDim2.new(1, -18, 0, 2) or UDim2.new(0, 2, 0, 2)}, 0.15)
                 tween(toggleBtn, {BackgroundColor3 = state and theme.Primary or Color3.fromRGB(100, 100, 100)}, 0.15)
             end)
+            return elem
+        end
+
+        -- Add a keybind (button that listens for a key)
+        function tab:AddKeybind(config)
+            local elem = createElementFrame(tabContent, 35)
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(0.6, -10, 1, 0)
+            label.Position = UDim2.new(0, 5, 0, 0)
+            label.BackgroundTransparency = 1
+            label.Text = config.text or "Keybind"
+            label.TextColor3 = theme.Text
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.TextSize = 14
+            label.Font = Enum.Font.Gotham
+            label.Parent = elem
+
+            local bindBtn = Instance.new("TextButton")
+            bindBtn.Size = UDim2.new(0.3, -10, 1, -5)
+            bindBtn.Position = UDim2.new(0.7, 0, 0, 2.5)
+            bindBtn.BackgroundColor3 = theme.Secondary
+            bindBtn.BackgroundTransparency = 0.2
+            bindBtn.Text = config.default or "None"
+            bindBtn.TextColor3 = theme.Text
+            bindBtn.TextSize = 12
+            bindBtn.Font = Enum.Font.Gotham
+            bindBtn.Parent = elem
+
+            local currentKey = config.default or ""
+            local listening = false
+
+            local function updateButtonText()
+                bindBtn.Text = currentKey == "" and "None" or currentKey
+            end
+            updateButtonText()
+
+            bindBtn.MouseButton1Click:Connect(function()
+                if listening then return end
+                listening = true
+                bindBtn.Text = "Press a key..."
+                local connection
+                connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                    if gameProcessed then return end
+                    if input.UserInputType == Enum.UserInputType.Keyboard then
+                        local key = input.KeyCode.Name
+                        currentKey = key
+                        updateButtonText()
+                        if config.callback then config.callback(key) end
+                        listening = false
+                        connection:Disconnect()
+                    end
+                end)
+                task.wait(5)
+                if listening then
+                    listening = false
+                    connection:Disconnect()
+                    updateButtonText()
+                end
+            end)
+            return elem
+        end
+
+        -- Add a dropdown
+        function tab:AddDropdown(config)
+            local elem = createElementFrame(tabContent, 40)
+            local label = Instance.new("TextLabel")
+            label.Size = UDim2.new(1, -10, 0, 20)
+            label.Position = UDim2.new(0, 5, 0, 5)
+            label.BackgroundTransparency = 1
+            label.Text = config.text or "Dropdown"
+            label.TextColor3 = theme.Text
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.TextSize = 12
+            label.Font = Enum.Font.Gotham
+            label.Parent = elem
+
+            local dropdownBtn = Instance.new("TextButton")
+            dropdownBtn.Size = UDim2.new(1, -10, 0, 20)
+            dropdownBtn.Position = UDim2.new(0, 5, 0, 25)
+            dropdownBtn.BackgroundColor3 = theme.Secondary
+            dropdownBtn.BackgroundTransparency = 0.2
+            dropdownBtn.Text = config.options[1] or "Select"
+            dropdownBtn.TextColor3 = theme.Text
+            dropdownBtn.TextSize = 12
+            dropdownBtn.Font = Enum.Font.Gotham
+            dropdownBtn.Parent = elem
+
+            local dropdownList = Instance.new("Frame")
+            dropdownList.Size = UDim2.new(1, 0, 0, 0)
+            dropdownList.Position = UDim2.new(0, 0, 1, 2)
+            dropdownList.BackgroundColor3 = theme.Background
+            dropdownList.BackgroundTransparency = 0.1
+            dropdownList.BorderSizePixel = 0
+            dropdownList.Visible = false
+            dropdownList.Parent = dropdownBtn
+
+            local listLayout = Instance.new("UIListLayout")
+            listLayout.Padding = UDim.new(0, 2)
+            listLayout.Parent = dropdownList
+
+            local function updateHeight()
+                local count = #dropdownList:GetChildren()
+                dropdownList.Size = UDim2.new(1, 0, 0, count * 25)
+            end
+
+            for _, option in ipairs(config.options) do
+                local optBtn = Instance.new("TextButton")
+                optBtn.Size = UDim2.new(1, 0, 0, 25)
+                optBtn.BackgroundColor3 = theme.ElementBg
+                optBtn.BackgroundTransparency = 0.3
+                optBtn.Text = option
+                optBtn.TextColor3 = theme.Text
+                optBtn.TextSize = 12
+                optBtn.Font = Enum.Font.Gotham
+                optBtn.Parent = dropdownList
+                optBtn.MouseButton1Click:Connect(function()
+                    dropdownBtn.Text = option
+                    dropdownList.Visible = false
+                    if config.callback then config.callback(option) end
+                end)
+            end
+            updateHeight()
+
+            dropdownBtn.MouseButton1Click:Connect(function()
+                dropdownList.Visible = not dropdownList.Visible
+                if dropdownList.Visible then
+                    dropdownList.Size = UDim2.new(1, 0, 0, 0)
+                    task.wait()
+                    dropdownList.Size = UDim2.new(1, 0, 0, #config.options * 25)
+                end
+            end)
+            return elem
+        end
+
+        -- Layout helpers: create two columns
+        function tab:CreateColumns()
+            local container = Instance.new("Frame")
+            container.Size = UDim2.new(1, 0, 1, 0)
+            container.BackgroundTransparency = 1
+            container.Parent = tabContent
+
+            local left = createColumn(container, 0.48)
+            local right = createColumn(container, 0.48)
+            right.Position = UDim2.new(0.52, 0, 0, 0)
+            return left, right
+        end
+
+        -- Section: a titled group of elements
+        function tab:AddSection(title)
+            local section = Instance.new("Frame")
+            section.Size = UDim2.new(1, 0, 0, 0)
+            section.BackgroundTransparency = 1
+            section.Parent = tabContent
+
+            local titleLabel = Instance.new("TextLabel")
+            titleLabel.Size = UDim2.new(1, 0, 0, 25)
+            titleLabel.BackgroundTransparency = 1
+            titleLabel.Text = title
+            titleLabel.TextColor3 = theme.Primary
+            titleLabel.TextSize = 14
+            titleLabel.Font = Enum.Font.GothamBold
+            titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+            titleLabel.Parent = section
+
+            local content = Instance.new("Frame")
+            content.Size = UDim2.new(1, 0, 1, -25)
+            content.Position = UDim2.new(0, 0, 0, 25)
+            content.BackgroundTransparency = 1
+            content.Parent = section
+
+            local layout = Instance.new("UIListLayout")
+            layout.Padding = UDim.new(0, 8)
+            layout.Parent = content
+
+            return content
         end
 
         return tab
     end
 
+    -- Notifications
     function window:Notify(config)
         local notif = Instance.new("Frame")
         notif.Size = UDim2.new(0, 250, 0, 50)
